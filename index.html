@@ -63,7 +63,7 @@
         <li class="fragment"><strong>Facebook</strong> - Pickle Remote Code Execution</li>
         <li class="fragment"><strong>GitHub</strong> - Unicode Downcasing</li>
         <li class="fragment"><strong>YPlan</strong> - HTML Injection</li>
-        <li class="fragment"><strong>Lotsa Sites</strong> - Javascript Injection</li>
+        <li class="fragment"><strong>Lotsa Sites</strong> - Javascript HTML Injection</li>
     </ol>
 </section>
 
@@ -129,6 +129,7 @@ class PickleRce:
 </code></pre>
 <pre><code class="language-python" style="white-space: pre-wrap">In [2]: pickle.dumps(PickleRce())
 Out[2]: b'\x80\x04\x95#\x00\x00\x00\x00\x00\x00\x00\x8c\x05posix\x94\x8c\x06system\x94\x93\x94\x8c\x08sleep 30\x94\x85\x94R\x94.'</code></pre>
+    <p>Runs <code>sleep 30</code> <em>on load</em>!</p>
 </section>
 
 <section>
@@ -247,12 +248,180 @@ Out[2]: b'\x80\x04\x95#\x00\x00\x00\x00\x00\x00\x00\x8c\x05posix\x94\x8c\x06syst
 </section>
 
 <section>
+    <h2>🎉 Story 3: YPlan</h2>
+    <p>Happened to me.</p>
+    <img class="r-stretch" src="img/yplan.jpg">
+</section>
+
+<section>
+    <h2>✍️ Step 1: Set name to include script tag</h2>
+    <p>For example:</p>
+    <p>Tom <code class="language-html">&lt;script&gt;alert("😺")&lt;/script&gt;</code></p>
+</section>
+
+<section>
+    <h2>👀 Step 2: Someone browses the admin</h2>
+    <img class="r-stretch" src="img/yplan-admin.png">
+</section>
+
+<section>
+    <h2>🚨 <code>mark_safe</code> is not safe 🚨</h2>
+    <pre><code class="language-python">class CustomUserAdmin(UserAdmin):
+    list_display = ["username", "email",
+                    "full_name", "is_staff"]
+
+    def full_name(self, obj):
+        return mark_safe(
+            "&lt;strong&gt;"
+            + f"{obj.first_name} {obj.last_name}"
+            + "&lt;/strong&gt;"
+        )</code></pre>
+
+    <p>HTML in user data <em>unsafely</em> injected into admin.</p>
+</section>
+
+<section>
+    <h2>✅ Use <code>format_html</code></h2>
+    <pre><code class="language-python">class CustomUserAdmin(UserAdmin):
+    list_display = ["username", "email",
+                    "full_name", "is_staff"]
+
+    def full_name(self, obj):
+        return format_html(
+            "&lt;strong&gt;{} {}&lt;/strong&gt;",
+            obj.first_name,
+            obj.last_name,
+        )</code></pre>
+
+    <p>For lists: <code>format_html_join</code></p>
+</section>
+
+<section>
+    <h2>🦹‍♀️ How to Hack</h2>
+    <ul>
+        <li>Try adding HTML in every field you can.</li>
+        <li>Beacon resources - script/image/etc.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>🦸‍♀️ How to Protect</h2>
+    <ul>
+        <li>Don’t copy code with <code>mark_safe</code>.</li>
+        <li>Rename <code>mark_safe</code>?</li>
+        <li>Block untrusted resources with <code>Content-Security-Policy</code></li>
+    </ul>
+</section>
+
+<section>
+    <h2>📚 Story 4 : Lotsa sites</h2>
+    <p>Recurring audit issue.</p>
+    <img class="r-stretch" src="img/audit.png">
+</section>
+
+<section>
+    <h2>😈 Step 1: Include HTML in field you control</h2>
+    <p>For example:</p>
+    <p>Adam <code class="language-html">&lt;/script&gt;&lt;script&gt;alert('😺')&lt;/script&gt;</code></p>
+</section>
+
+<section>
+    <h2>🤖 Step 2: View Forms “JSON” Data</h2>
+    <pre><code class="language-python">def index(request):
+    user_json = json.dumps({
+        name: request.user.full_name,
+    })
+    return render(
+        request,
+        'index.html',
+        context={"user_json": user_json}
+    )</code></pre>
+</section>
+
+<section>
+    <h2>🤖 Step 3: Template Inlines JSON</h2>
+    <pre><code class="language-html">&lt;script&gt;
+    const user = {{ user_json|safe }};
+&lt;/script&gt;</code></pre>
+    <p><code>mark_safe</code> by another name...</p>
+</section>
+
+<section>
+    <h2>📝 Step 4: Cat Alert</h2>
+    <img class="r-stretch" src="img/lotsacats.png">
+</section>
+
+<section>
+    <h2>🚨 HTML PARSES FIRST 🚨</h2>
+    <pre><code class="language-html">&lt;script&gt;
+    const user = {
+        name: "&lt;/script&gt;&lt;script&gt;alert('😺')&lt;/script&gt;"
+    };
+&lt;/script&gt;</code></pre>
+    <p>Two script tags plus some ignored junk!</p>
+</section>
+
+<section>
+    <h2>✅ Use <code>json_script</code></h2>
+    <pre><code class="language-html">
+    {{ user|json_script:"user" }}
+    &lt;script&gt;
+        const user = JSON.parse(
+            document.getElementById('user').textContent
+        );
+    &lt;/script&gt;
+</code></pre>
+    <p>See post: <a href="https://adamj.eu/tech/2020/02/18/safely-including-data-for-javascript-in-a-django-template/">Safely Including Data for JavaScript in a Django Template</a>.</p>
+</section>
+
+<section>
+    <h2>🦹‍♀️ How to Hack</h2>
+    <ul>
+        <li>Look for inline &lt;script&gt; tags with data.</li>
+        <li>Try adding HTML starting <code>&lt;/script&gt;</code> in every field you can.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>🦸‍♀️ How to Protect</h2>
+    <ul>
+        <li>Use <code>json_script</code>.</li>
+        <li>Block untrusted resources with <code>Content-Security-Policy</code></li>
+    </ul>
+</section>
+
+<section>
+    <h2>🦸‍♀️ Bonus Protection: security.txt</h2>
+    <img class="r-stretch" src="img/securitytxt-org.png">
+</section>
+
+<section>
+    <h2>🔐 security.txt view</h2>
+    <pre><code class="language-python">@require_GET
+def security_txt(request):
+    lines = [
+        "Contact: mailto:security@example.com",
+    ]
+    return HttpResponse(
+        "\n".join(lines),
+        content_type="text/plain"
+    )</code></pre>
+    <p>See post: <a href="https://adamj.eu/tech/2020/06/28/how-to-add-a-well-known-url-to-your-django-site/">How to add a .well-known URL to your Django site</a>.</p>
+</section>
+
+<section>
+    <h2>🔐 security.txt example</h2>
+    <small><code>https://adamj.eu/.well-known/security.txt</code></small>
+    <img class="r-stretch" src="img/security-txt.png">
+</section>
+
+<section>
     <h1>Thank you! 🤗</h1>
     <ul>
         <li>Adam Johnson</li>
         <li>@adamchainz on GitHub &amp; Twitter</li>
         <li>me@adamj.eu</li>
-        <li><a href="https://github.com/adamchainz/talk-what-happens-when-you-run-manage.py-test">github.com/adamchainz/talk-what-happens-when-you-run-manage.py-test</a></li>
+        <li><a href="https://github.com/adamchainz/talk-how-to-hack-a-django-website">github.com/adamchainz/talk-how-to-hack-a-django-website</a></li>
     </ul>
 </section>
 
