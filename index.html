@@ -37,7 +37,7 @@
     <h2>🍀 Four Stories</h2>
     <ol>
         <li class="fragment"><strong>Facebook</strong> - Pickle Remote Code Execution</li>
-        <li class="fragment"><strong>GitHub</strong> - Unicode Downcasing</li>
+        <li class="fragment"><strong>GitHub</strong> - Unicode Case Collision Takeover</li>
         <li class="fragment"><strong>YPlan</strong> - HTML Injection</li>
         <li class="fragment"><strong>Lotsa Sites</strong> - Javascript HTML Injection</li>
     </ol>
@@ -106,6 +106,11 @@ class PickleRce:
 <pre><code class="language-python" style="white-space: pre-wrap">In [2]: pickle.dumps(PickleRce())
 Out[2]: b'\x80\x04\x95#\x00\x00\x00\x00\x00\x00\x00\x8c\x05posix\x94\x8c\x06system\x94\x93\x94\x8c\x08sleep 30\x94\x85\x94R\x94.'</code></pre>
     <p>Runs <code>sleep 30</code> <em>on load</em>!</p>
+</section>
+
+<section>
+    <h2>🚨 PICKLE IS CODE 🚨</h2>
+    <img class="r-stretch" src="img/pickle.png">
 </section>
 
 <section>
@@ -331,7 +336,7 @@ Out[2]: b'\x80\x04\x95#\x00\x00\x00\x00\x00\x00\x00\x8c\x05posix\x94\x8c\x06syst
     <h2>🚨 HTML PARSES FIRST 🚨</h2>
     <pre><code class="language-html">&lt;script&gt;
     const user = {
-        name: "&lt;/script&gt;&lt;script&gt;alert('😺')&lt;/script&gt;"
+        name: "Adam &lt;/script&gt;&lt;script&gt;alert('😺')&lt;/script&gt;"
     };
 &lt;/script&gt;</code></pre>
     <p>Two script tags plus some ignored junk!</p>
@@ -339,13 +344,25 @@ Out[2]: b'\x80\x04\x95#\x00\x00\x00\x00\x00\x00\x00\x8c\x05posix\x94\x8c\x06syst
 
 <section>
     <h2>✅ Use <code>json_script</code></h2>
-    <pre><code class="language-html">
-    {{ user|json_script:"user" }}
-    &lt;script&gt;
-        const user = JSON.parse(
-            document.getElementById('user').textContent
-        );
-    &lt;/script&gt;
+    <pre><code class="language-html">{{ user|json_script:"user" }}
+&lt;script&gt;
+    const user = JSON.parse(
+        document.getElementById('user').textContent
+    );
+&lt;/script&gt;
+</code></pre>
+</section>
+
+<section>
+    <h2>✅ Use <code>json_script</code></h2>
+    <pre><code class="language-html">&lt;script id="user" type="application/json"&gt;{
+    "name": "Adam \u003C/script\u003E\u003Cscript\u003Ealert('\ud83d\ude3a')\u003C/script\u003E"
+}&lt;/script&gt;
+&lt;script&gt;
+    const user = JSON.parse(
+        document.getElementById('user').textContent
+    );
+&lt;/script&gt;
 </code></pre>
     <p>See post: <a href="https://adamj.eu/tech/2020/02/18/safely-including-data-for-javascript-in-a-django-template/">Safely Including Data for JavaScript in a Django Template</a>.</p>
 </section>
